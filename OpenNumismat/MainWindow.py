@@ -257,6 +257,14 @@ class MainWindow(QMainWindow):
             self.collectionActs.append(importCoinSnapAct)
             importMenu.addAction(importCoinSnapAct)
 
+        if ImportJson.isAvailable():
+            importJsonAct = QAction(
+                                    QIcon(':/json.png'),
+                                    "JSON", self)
+            importJsonAct.triggered.connect(self.importJson)
+            self.collectionActs.append(importJsonAct)
+            importMenu.addAction(importJsonAct)
+
         mergeCollectionAct = QAction(
                                     QIcon(':/refresh.png'),
                                     self.tr("Synchronize..."), self)
@@ -758,6 +766,14 @@ class MainWindow(QMainWindow):
             self, self.tr("Select file"), defaultDir, "*.csv")
         if file:
             imp = ImportCoinSnap(self)
+            imp.importData(file, self.viewTab.currentModel())
+
+    def importJson(self):
+        defaultDir = ImportJson.defaultDir()
+        file, _selectedFilter = QFileDialog.getOpenFileName(
+            self, self.tr("Select file"), defaultDir, "*.json")
+        if file:
+            imp = ImportJson(self)
             imp.importData(file, self.viewTab.currentModel())
 
     def exportJson(self):
