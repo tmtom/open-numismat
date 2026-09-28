@@ -88,6 +88,13 @@ class NumistaAuthentication(QDialog):
     def onSslErrors(self, reply, errors):
         reply.ignoreSslErrors()
 
+    def closeEvent(self, event):
+        page = self.page.page()
+        if page is not None:
+            self.page.setPage(None)
+            page.deleteLater()
+        super().closeEvent(event)
+
 
 class ImportNumista(_Import2):
     ENDPOINT = 'https://api.numista.com/api/v3'
