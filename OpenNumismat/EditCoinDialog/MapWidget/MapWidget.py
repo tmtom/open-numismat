@@ -13,6 +13,17 @@ from OpenNumismat.Settings import Settings
 from OpenNumismat import version
 
 
+_map_profile = None
+
+
+def _get_map_profile():
+    global _map_profile
+    if _map_profile is None:
+        _map_profile = QWebEngineProfile(QApplication.instance())
+        _map_profile.setHttpUserAgent(version.UserAgent)
+    return _map_profile
+
+
 class WebEnginePage(QWebEnginePage):
     def acceptNavigationRequest(self, url, type_, isMainFrame):
         if type_ == QWebEnginePage.NavigationTypeLinkClicked:
@@ -26,8 +37,7 @@ class QWebView(QWebEngineView):
     def __init__(self, parent=None):
         super().__init__(parent)
 
-        profile = QWebEngineProfile(self)
-        profile.setHttpUserAgent(version.UserAgent)
+        profile = _get_map_profile()
 
         if QApplication.platformName() != 'wayland':
             self.setAttribute(Qt.WA_NativeWindow)

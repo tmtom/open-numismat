@@ -284,8 +284,11 @@ class FindDialog(QDialog):
         self.table.setColumnCount(1)
         self._updateTableSizes()
 
-        old_widget = self.splitter.replaceWidget(1, self.table)
-        old_widget.deleteLater()
+        current_widget = self.splitter.widget(1)
+        if current_widget is not self.table:
+            old_widget = self.splitter.replaceWidget(1, self.table)
+            if old_widget is not None:
+                old_widget.deleteLater()
 
         similarity = self.similaritySlider.value()
         max_val = 64
