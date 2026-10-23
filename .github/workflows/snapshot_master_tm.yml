@@ -1,12 +1,27 @@
-name: "Snapshot"
+name: "Snapshot (master_tm)"
+
+# Automatic development builds for the fork's "master_tm" branch.
+#
+# Same idea as upstream's "Snapshot" workflow on "master" (same build matrix),
+# except:
+#   - it triggers on "master_tm" only, so upstream's "master" is never touched;
+#   - the OpenNumismat/ImageEditor submodule is built at the head of the fork's
+#     "main_tm" branch (resolved once per run in the "title" job), not at the
+#     pinned gitlink commit;
+#   - only the latest build is kept: artifacts of previous runs are dropped and
+#     every deliverable is published to the rolling "master_tm-latest"
+#     pre-release ("Development Build (master_tm)"), with the asset names
+#     marked as "<name>-master_tm-<sha7>-<flavor>";
+#   - no code signing (SignPath is upstream-only and is skipped here).
 
 on:
   push:
-    branches: [ "master" ]
+    branches: [ "master_tm" ]
     paths-ignore:
       - 'OpenNumismat/resources/i18n/*'
       - 'icons/*'
       - 'OpenNumismat/resources/resources.qrc'
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}
@@ -16,10 +31,16 @@ jobs:
   title:
     name: Title
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      actions: write
     outputs:
       APPNAME: OpenNumismat
       VERSION: ${{ steps.bump.outputs.current-version }}.${{ steps.bump.outputs.current-release }}
       PACKAGENAME: OpenNumismat-${{ steps.bump.outputs.current-version }}.${{ steps.bump.outputs.current-release }}
+      SHA_SHORT: ${{ steps.meta.outputs.sha-short }}
+      IME_SHA: ${{ steps.meta.outputs.ime-sha }}
+      IME_SHORT: ${{ steps.meta.outputs.ime-short }}
     steps:
     - uses: actions/checkout@v7
       with:
@@ -27,6 +48,31 @@ jobs:
     - uses: actions/setup-python@v7
       with:
         python-version: '3.12'
+    - name: Drop artifacts of previous runs
+      shell: bash
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        gh api "repos/${{ github.repository }}/actions/artifacts?per_page=100" --paginate \
+          --jq ".artifacts[] | select(.expired == false and .workflow_run.id != ${{ github.run_id }}) | .id" |
+        while read -r id; do
+          echo "Dropping stale artifact $id"
+          gh api -X DELETE "repos/${{ github.repository }}/actions/artifacts/$id" || true
+        done
+    - name: Meta
+      id: meta
+      shell: bash
+      run: |
+        echo "sha-short=$(git rev-parse --short=7 HEAD)" >> "$GITHUB_OUTPUT"
+        url=$(git config -f .gitmodules --get submodule.OpenNumismat/ImageEditor.url)
+        ime=$(git ls-remote "$url" refs/heads/main_tm | cut -f1)
+        if [ -z "$ime" ]; then
+          echo "Cannot resolve head of main_tm in $url" >&2
+          exit 1
+        fi
+        echo "ime-sha=$ime" >> "$GITHUB_OUTPUT"
+        echo "ime-short=${ime:0:7}" >> "$GITHUB_OUTPUT"
+        echo "ImageEditor main_tm head: $ime"
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
@@ -47,6 +93,12 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-depth: 0
+    - name: Use ImageEditor main_tm head
+      shell: bash
+      run: |
+        git -C OpenNumismat/ImageEditor fetch --depth 2147483647 origin main_tm
+        git -C OpenNumismat/ImageEditor checkout --detach ${{ needs.title.outputs.IME_SHA }}
+        echo "ImageEditor at $(git -C OpenNumismat/ImageEditor rev-parse HEAD)"
     - uses: actions/setup-python@v7
       with:
         python-version: '3.14'
@@ -121,6 +173,12 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-depth: 0
+    - name: Use ImageEditor main_tm head
+      shell: bash
+      run: |
+        git -C OpenNumismat/ImageEditor fetch --depth 2147483647 origin main_tm
+        git -C OpenNumismat/ImageEditor checkout --detach ${{ needs.title.outputs.IME_SHA }}
+        echo "ImageEditor at $(git -C OpenNumismat/ImageEditor rev-parse HEAD)"
     - uses: actions/setup-python@v7
       with:
         python-version: '3.14'
@@ -189,6 +247,12 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-depth: 0
+    - name: Use ImageEditor main_tm head
+      shell: bash
+      run: |
+        git -C OpenNumismat/ImageEditor fetch --depth 2147483647 origin main_tm
+        git -C OpenNumismat/ImageEditor checkout --detach ${{ needs.title.outputs.IME_SHA }}
+        echo "ImageEditor at $(git -C OpenNumismat/ImageEditor rev-parse HEAD)"
     - uses: actions/setup-python@v7
       with:
         python-version: '3.12'
@@ -280,6 +344,12 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-depth: 0
+    - name: Use ImageEditor main_tm head
+      shell: bash
+      run: |
+        git -C OpenNumismat/ImageEditor fetch --depth 2147483647 origin main_tm
+        git -C OpenNumismat/ImageEditor checkout --detach ${{ needs.title.outputs.IME_SHA }}
+        echo "ImageEditor at $(git -C OpenNumismat/ImageEditor rev-parse HEAD)"
     - uses: actions/setup-python@v7
       with:
         python-version: '3.12'
@@ -363,6 +433,12 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-depth: 0
+    - name: Use ImageEditor main_tm head
+      shell: bash
+      run: |
+        git -C OpenNumismat/ImageEditor fetch --depth 2147483647 origin main_tm
+        git -C OpenNumismat/ImageEditor checkout --detach ${{ needs.title.outputs.IME_SHA }}
+        echo "ImageEditor at $(git -C OpenNumismat/ImageEditor rev-parse HEAD)"
     - name: Install dependencies
       run: |
         sudo apt update
@@ -408,6 +484,12 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-depth: 0
+    - name: Use ImageEditor main_tm head
+      shell: bash
+      run: |
+        git -C OpenNumismat/ImageEditor fetch --depth 2147483647 origin main_tm
+        git -C OpenNumismat/ImageEditor checkout --detach ${{ needs.title.outputs.IME_SHA }}
+        echo "ImageEditor at $(git -C OpenNumismat/ImageEditor rev-parse HEAD)"
     - name: Install dependencies
       run: |
         sudo apt update
@@ -453,6 +535,12 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-depth: 0
+    - name: Use ImageEditor main_tm head
+      shell: bash
+      run: |
+        git -C OpenNumismat/ImageEditor fetch --depth 2147483647 origin main_tm
+        git -C OpenNumismat/ImageEditor checkout --detach ${{ needs.title.outputs.IME_SHA }}
+        echo "ImageEditor at $(git -C OpenNumismat/ImageEditor rev-parse HEAD)"
     - name: Install dependencies
       run: |
         sudo apt update
@@ -498,6 +586,12 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-depth: 0
+    - name: Use ImageEditor main_tm head
+      shell: bash
+      run: |
+        git -C OpenNumismat/ImageEditor fetch --depth 2147483647 origin main_tm
+        git -C OpenNumismat/ImageEditor checkout --detach ${{ needs.title.outputs.IME_SHA }}
+        echo "ImageEditor at $(git -C OpenNumismat/ImageEditor rev-parse HEAD)"
     - uses: actions/setup-python@v7
       with:
         python-version: '3.13'
@@ -544,6 +638,12 @@ jobs:
       with:
         submodules: 'recursive'
         fetch-depth: 0
+    - name: Use ImageEditor main_tm head
+      shell: bash
+      run: |
+        git -C OpenNumismat/ImageEditor fetch --depth 2147483647 origin main_tm
+        git -C OpenNumismat/ImageEditor checkout --detach ${{ needs.title.outputs.IME_SHA }}
+        echo "ImageEditor at $(git -C OpenNumismat/ImageEditor rev-parse HEAD)"
     - uses: actions/setup-python@v7
       with:
         python-version: '3.13'
@@ -581,8 +681,8 @@ jobs:
         path: dist/${{ needs.title.outputs.PACKAGENAME }}-macos15-arm64.dmg
         if-no-files-found: error
 
-  prerelease:
-    name: Create pre-release
+  publish:
+    name: Publish latest build
     needs: [title, windows, innosetup, ubuntu, ubuntu-24, ubuntu-26, macos, macos-arm64, nuitka, nuitka_innosetup]
     runs-on: ubuntu-latest
     permissions:
@@ -590,33 +690,54 @@ jobs:
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-    - uses: actions/checkout@v7
-      with:
-        fetch-depth: 0
     - name: Download artifacts
       uses: actions/download-artifact@v8
       with:
         path: artifacts
-    - name: Delete old release
-      run: gh release delete latest --yes --cleanup-tag || echo "Not found"
+    - name: Mark deliverables
+      shell: bash
+      run: |
+        set -euo pipefail
+        P='${{ needs.title.outputs.PACKAGENAME }}'
+        V='${{ needs.title.outputs.VERSION }}'
+        M="master_tm-${{ needs.title.outputs.SHA_SHORT }}"
+        mkdir dist
+        cp "artifacts/${P}-portable-signed/${P}.zip"                  "dist/OpenNumismat-${V}-${M}-portable.zip"
+        cp "artifacts/${P}/${P}.exe"                                  "dist/OpenNumismat-${V}-${M}-setup.exe"
+        cp "artifacts/${P}-nuitka-portable-signed/${P}-nuitka.zip"    "dist/OpenNumismat-${V}-${M}-nuitka-portable.zip"
+        cp "artifacts/${P}-nuitka/${P}-nuitka.exe"                    "dist/OpenNumismat-${V}-${M}-nuitka-setup.exe"
+        cp "artifacts/${P}-deb/open-numismat_${V}_all.deb"            "dist/open-numismat_${V}-${M}_all.deb"
+        cp "artifacts/${P}-deb-24/open-numismat_${V}_all_24.deb"      "dist/open-numismat_${V}-${M}_all_24.deb"
+        cp "artifacts/${P}-deb-26/open-numismat_${V}_all_26.deb"      "dist/open-numismat_${V}-${M}_all_26.deb"
+        cp "artifacts/${P}-dmg/${P}-macos15.dmg"                      "dist/OpenNumismat-${V}-${M}-macos15.dmg"
+        cp "artifacts/${P}-dmg-arm64/${P}-macos15-arm64.dmg"          "dist/OpenNumismat-${V}-${M}-macos15-arm64.dmg"
+        ls -l dist
+    - name: Release notes
+      shell: bash
+      run: |
+        {
+          echo "Rolling development build of branch \`master_tm\` (upstream \`master\` + own features). Only the latest build is kept."
+          echo
+          echo "- Commit: \`${{ github.sha }}\` (\`master_tm\`)"
+          echo "- ImageEditor submodule: \`${{ needs.title.outputs.IME_SHA }}\` (\`main_tm\` head)"
+          echo "- Version: ${{ needs.title.outputs.VERSION }}"
+          echo "- Built: $(date -u '+%Y-%m-%d %H:%M:%S UTC')"
+          echo "- Workflow run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          echo
+          echo "Not an official release. Unsigned (SignPath signing runs on upstream only)."
+        } > notes.md
+        cat notes.md
+    - name: Release
+      shell: bash
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    - name: release
-      id: release
-      uses: softprops/action-gh-release@v3
-      with:
-        token: "${{ secrets.PAT }}"
-        tag_name: "latest"
-        prerelease: true
-        name: "Development Build"
-        generate_release_notes: true
-        files: |
-          artifacts/${{ needs.title.outputs.PACKAGENAME }}-portable-signed/${{ needs.title.outputs.PACKAGENAME }}.zip
-          artifacts/${{ needs.title.outputs.PACKAGENAME }}/${{ needs.title.outputs.PACKAGENAME }}.exe
-          artifacts/${{ needs.title.outputs.PACKAGENAME }}-nuitka-portable-signed/${{ needs.title.outputs.PACKAGENAME }}-nuitka.zip
-          artifacts/${{ needs.title.outputs.PACKAGENAME }}-nuitka/${{ needs.title.outputs.PACKAGENAME }}-nuitka.exe
-          artifacts/${{ needs.title.outputs.PACKAGENAME }}-deb/open-numismat_${{ needs.title.outputs.VERSION }}_all.deb
-          artifacts/${{ needs.title.outputs.PACKAGENAME }}-deb-24/open-numismat_${{ needs.title.outputs.VERSION }}_all_24.deb
-          artifacts/${{ needs.title.outputs.PACKAGENAME }}-deb-26/open-numismat_${{ needs.title.outputs.VERSION }}_all_26.deb
-          artifacts/${{ needs.title.outputs.PACKAGENAME }}-dmg/${{ needs.title.outputs.PACKAGENAME }}-macos15.dmg
-          artifacts/${{ needs.title.outputs.PACKAGENAME }}-dmg-arm64/${{ needs.title.outputs.PACKAGENAME }}-macos15-arm64.dmg
+        GH_REPO: ${{ github.repository }}
+      run: |
+        tag="master_tm-latest"
+        if gh release view "$tag" >/dev/null 2>&1; then
+          gh release delete "$tag" --yes --cleanup-tag
+        fi
+        gh release create "$tag" dist/* \
+          --prerelease \
+          --title "Development Build (master_tm)" \
+          --target "$GITHUB_SHA" \
+          --notes-file notes.md
